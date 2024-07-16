@@ -1,0 +1,219 @@
+---
+title: "Task2_Q2"
+output:
+  word_document: default
+  html_document: default
+date: "2024-06-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(caret)
+library(e1071)
+
+# Load the data
+file_path <- "C:/Users/jihad qutteineh/Downloads/prostatecancer.csv"
+data <- read.csv(file_path)
+
+# Display the first few rows of the data
+head(data)
+
+```
+```{r}
+# Summary statistics for continuous variables
+summary(data[c("Age", "Acid")])
+
+# Summary statistics for binary variables
+summary(data[c("Xray", "Grade", "Stage", "Nodes")])
+
+```
+```{r}
+# Calculate proportions and counts for all binary columns
+
+# Create a list of binary column names
+binary_columns <- c("Grade", "Nodes", "Xray", "Stage")
+
+# Function to format output
+format_output <- function(col, proportion, count) {
+    message(sprintf("Column: %s", col))
+    message(sprintf("  Proportion of 0: %.2f%%", proportion[1] * 100))
+    message(sprintf("  Proportion of 1: %.2f%%", proportion[2] * 100))
+    message(sprintf("  Count of 0: %d", count[1]))
+    message(sprintf("  Count of 1: %d", count[2]))
+    cat("\n")
+}
+
+# Iterate over each binary column
+for (col in binary_columns) {
+    # Proportion of each value
+    proportion <- prop.table(table(data[[col]]))
+    
+    # Count of each value
+    count <- table(data[[col]])
+    
+    # Format and print output
+    format_output(col, proportion, count)
+}
+
+
+```
+
+```{r}
+# Visualize continuous variables
+ggplot(data, aes(x = Nodes, y = Age)) +
+    geom_boxplot() +
+    labs(title = "Boxplot of Age by Nodal Involvement", x = "Nodal Involvement", y = "Age")
+
+ggplot(data, aes(x = Nodes, y = Acid)) +
+    geom_boxplot() +
+    labs(title = "Boxplot of Serum Acid Phosphatase by Nodal Involvement", x = "Nodal Involvement", y = "Serum Acid Phosphatase")
+
+# Visualize binary variables
+ggplot(data, aes(x = as.factor(Nodes), fill = as.factor(Xray))) +
+    geom_bar(position = "fill") +
+    labs(title = "X-ray Reading by Nodal Involvement", x = "Nodal Involvement", y = "Proportion")
+
+ggplot(data, aes(x = as.factor(Nodes), fill = as.factor(Grade))) +
+    geom_bar(position = "fill") +
+    labs(title = "Pathology Reading by Nodal Involvement", x = "Nodal Involvement", y = "Proportion")
+
+ggplot(data, aes(x = as.factor(Nodes), fill = as.factor(Stage))) +
+    geom_bar(position = "fill") +
+    labs(title = "Tumor Stage by Nodal Involvement", x = "Nodal Involvement", y = "Proportion")
+
+```
+```{r}
+# Load libraries
+library(ggplot2)
+library(corrplot)
+
+# Correlation analysis
+correlation_matrix <- cor(data[, -6])  # Exclude the outcome variable
+corrplot(correlation_matrix, method = "circle")
+
+# Visualization
+# Example scatter plot
+ggplot(data, aes(x = Age, y = Acid)) + geom_point()
+
+# Example box plot
+ggplot(data, aes(x = Grade, y = Age)) + geom_boxplot()
+
+# Example histogram
+ggplot(data, aes(x = Age)) + geom_histogram(binwidth = 5, fill = "skyblue", color = "black")
+
+# Feature importance (Random Forest)
+importance <- rf_model$importance
+importance <- data.frame(Variable = rownames(importance), Importance = importance[, 1])
+importance <- importance[order(importance$Importance, decreasing = TRUE), ]
+print(importance)
+
+# Model interpretation (logistic regression coefficients)
+coefficients <- coef(logistic_model)
+print(coefficients)
+
+
+```
+
+```{r}
+# Correlation matrix for continuous variables
+cor(data[c("Age", "Acid")])
+
+# Chi-squared tests for binary variables
+chisq.test(table(data$Xray, data$Nodes))
+chisq.test(table(data$Grade, data$Nodes))
+chisq.test(table(data$Stage, data$Nodes))
+
+```
+```{r}
+data$Nodes <- as.factor(data$Nodes)
+
+# Fit logistic regression model
+logistic_model <- glm(Nodes ~ ., data = data, family = binomial)
+
+# Make predictions
+predicted_values <- predict(logistic_model, type = "response")
+
+# Convert predicted probabilities to binary outcomes
+predicted_classes <- ifelse(predicted_values > 0.5, 1, 0)
+
+# Confusion matrix
+conf_matrix <- table(predicted_classes, data$Nodes)
+print(conf_matrix)
+
+# Calculate accuracy
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+print(paste("Accuracy:", accuracy))
+
+# Calculate precision
+precision <- conf_matrix[2, 2] / sum(conf_matrix[, 2])
+print(paste("Precision:", precision))
+
+# Calculate recall
+recall <- conf_matrix[2, 2] / sum(conf_matrix[2, ])
+print(paste("Recall:", recall))
+
+# Calculate F1-score
+f1_score <- 2 * (precision * recall) / (precision + recall)
+print(paste("F1-score:", f1_score))
+```
+```{r}
+# Load the randomForest library
+library(randomForest)
+
+# Assuming your data is stored in a data frame called 'data'
+
+# Ensure Nodes is a factor
+data$Nodes <- as.factor(data$Nodes)
+
+# Split the data into training and testing sets
+set.seed(123)  # for reproducibility
+train_index <- sample(1:nrow(data), 0.8*nrow(data))  # 80% training data
+train_data <- data[train_index, ]
+test_data <- data[-train_index, ]
+
+# Train the Random Forest model
+rf_model <- randomForest(Nodes ~ ., data = train_data)
+
+# Make predictions on the test data
+rf_predictions <- predict(rf_model, newdata = test_data)
+
+# Confusion matrix
+conf_matrix <- table(rf_predictions, test_data$Nodes)
+print(conf_matrix)
+
+# Calculate accuracy
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+print(paste("Accuracy:", accuracy))
+
+# Calculate precision
+precision <- conf_matrix[2, 2] / sum(conf_matrix[, 2])
+print(paste("Precision:", precision))
+
+# Calculate recall
+recall <- conf_matrix[2, 2] / sum(conf_matrix[2, ])
+print(paste("Recall:", recall))
+
+# Calculate F1-score
+f1_score <- 2 * (precision * recall) / (precision + recall)
+print(paste("F1-score:", f1_score))
+
+```
+
